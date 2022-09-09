@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 peptides_table <- "xxxx.txt"
-labels_to_plot <- c("TP53","BRD4")
+labels_to_plot <- c( "TP53", "BRD4" )
 
 # setwd("")
 
@@ -22,7 +22,7 @@ library( ggplot2 )
 library( ggrepel )
 ggplot( data = acetylated_peptides, aes(x = log2FC, y = Log10adjPVal, colour = significant, label = genelabels )) +  
     geom_point() +
-    geom_text_repel(aes(label = genelabels ),
+    geom_text_repel( aes( label = genelabels ),
                      min.segment.length = 0,
                      segment.color = 'grey50',
                      seed = 42,
@@ -32,5 +32,5 @@ ggplot( data = acetylated_peptides, aes(x = log2FC, y = Log10adjPVal, colour = s
                      max.overlaps = Inf ) +
     theme_minimal() 
 
-ggsave( 'volcano_aceltyl_peptides.pdf', height = 7, width = 8)
+ggsave( 'volcano_aceltyl_peptides.pdf', height = 7, width = 8 )
 
