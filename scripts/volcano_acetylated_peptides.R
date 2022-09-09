@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 peptides_table <- "xxxx.txt"
-labels_to_plot <- c( "TP53", "BRD4" )
+labels_to_plot <- c( "DNMT3A", "DNMT3B" )
 
 # setwd("")
 
