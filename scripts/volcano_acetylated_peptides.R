@@ -1,10 +1,9 @@
 #!/usr/bin/env Rscript
 
-setwd("/Users/pmadrigal/Desktop/volcano")
-
 peptides_table <- "xxxx.txt"
 labels_to_plot <- c("TP53","BRD4")
 
+# setwd("")
 
 acetylated_peptides <- read.table( file = peptides_table, header=TRUE )
 acetylated_peptides$significant <- ""
@@ -14,7 +13,7 @@ acetylated_peptides$genelabels <- ""
 acetylated_peptides$significant[ acetylated_peptides$Log10adjPVal < 1.30103 ] <- "FALSE"
 acetylated_peptides$significant[ acetylated_peptides$Log10adjPVal > 1.30103 ] <- "TRUE"
 
-for ( k in 1:length(labels_to_plot ) ){ acetylated_peptides$genelabels [ which(acetylated_peptides$GeneSymbol == labels_to_plot[k] ) ] <- labels_to_plot [k]   }
+for ( k in 1:length(labels_to_plot ) ){ acetylated_peptides$genelabels [ which(acetylated_peptides$GeneSymbol == labels_to_plot[k] ) ] <- labels_to_plot [k] }
 
 names( acetylated_peptides )
 head( acetylated_peptides )
@@ -33,5 +32,5 @@ ggplot( data = acetylated_peptides, aes(x = log2FC, y = Log10adjPVal, colour = s
                      max.overlaps = Inf ) +
     theme_minimal() 
 
-ggsave( 'volcano.pdf' , height = 7, width = 8)
+ggsave( 'volcano_aceltyl_peptides.pdf', height = 7, width = 8)
 
