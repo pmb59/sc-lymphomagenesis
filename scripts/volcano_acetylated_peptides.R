@@ -4,6 +4,9 @@ peptides_table <- "xxxx.txt"
 labels_to_plot <- c( "DNMT3A", "DNMT3B" )
 
 # setwd("")
+my_packages <- c("ggplot2", "ggrepel")
+not_installed <- my_packages[!(my_packages %in% installed.packages()[ , "Package"])]
+if(length(not_installed)) install.packages(not_installed)
 
 acetylated_peptides <- read.table( file = peptides_table, header=TRUE )
 acetylated_peptides$significant <- ""
