@@ -3,5 +3,5 @@
 Scripts for the following assays:
 
 - acetylproteomics
-- metabolomcs
+- metabolomics
 - single-cell RNA-seq
