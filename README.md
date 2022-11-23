@@ -1,6 +1,6 @@
-# single-cell-lymphomagenesis
+# Multi-omics study of lymphomagenesis
 
-Scripts for the following assays:
+Scripts for the analysis of the following assays:
 
 - acetylproteomics
 - metabolomics
