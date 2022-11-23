@@ -4,4 +4,4 @@ Scripts for the analysis of the following assays:
 
 - acetylproteomics
 - metabolomics
-- single-cell RNA-seq
+- 10X Single-Cell RNA Seq
