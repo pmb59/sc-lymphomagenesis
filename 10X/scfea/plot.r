@@ -21,7 +21,7 @@ ha = rowAnnotation(cluster=as.character( read.csv("meta.csv")$x ) ,
                         "LEU" = "red", "MLEU" = "magenta")) )
 
 pdf('scfea_mouse_atlas_batch.pdf', height=14, width=12 )
-ht1 <- Heatmap(matrix=mat2, name="balance",  # try scale(mat2)
+ht1 <- Heatmap(matrix=mat2, name="balance", 
               column_title = "metabolic states",
               #row_title = "cells",
               right_annotation = ha,
