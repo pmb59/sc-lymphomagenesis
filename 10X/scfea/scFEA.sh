@@ -2,6 +2,8 @@
 
 # metabolic flux using single-cell rna-seq data
 
+conda create --name scfea
+
 conda activate scfea
 
 cd scFEA
