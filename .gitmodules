@@ -1,0 +1,3 @@
+[submodule "10X/scfea/scFEA"]
+	path = 10X/scfea/scFEA
+	url = https://github.com/changwn/scFEA.git
