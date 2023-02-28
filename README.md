@@ -2,8 +2,8 @@
 
 This repository contains scripts for analyzing omics data of
 
-- 10X Single-Cell RNA-Seq
-- bulk RNA-Seq
+- 10X Single-Cell RNA-Seq of B220+ splenocytes from four longitudinal stages of disease evolution in mouse
+- bulk RNA-Seq of a DLBCL human cohort
 - acetylproteomics
 - metabolomics
 
