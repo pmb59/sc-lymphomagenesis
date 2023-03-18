@@ -16,13 +16,13 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           
-      - name: Run beautysh
-        uses: illvart/beautysh-action@latest
-        with:
-          # Pass beautysh options in args, for example:
-          args: './*/*.sh --indent-size 4'
+      #- name: Run beautysh
+      #  uses: illvart/beautysh-action@latest
+      #  with:
+      #    # Pass beautysh options in args, for example:
+      #    args: './*/*.sh --indent-size 4'
 
-      - name: Run beautysh 2
+      - name: Run beautysh
         uses: illvart/beautysh-action@latest
         with:
           args: './10X/*/*.sh --indent-size 4'
