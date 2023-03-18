@@ -25,7 +25,7 @@ jobs:
       - name: Run beautysh 2
         uses: illvart/beautysh-action@latest
         with:
-          args: './*/*/*.sh --indent-size 4'
+          args: './10X/*/*.sh --indent-size 4'
 
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v4
