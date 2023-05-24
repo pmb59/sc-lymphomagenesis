@@ -1,0 +1,343 @@
+---
+title: "TMT full proteome"
+authors: "Chandra Chilamakuri, Eva Papachristou, Sarah Harton"
+date: "08/06/2022 "
+output:
+  html_document:
+    code_folding: hide
+    number_sections: no
+    toc: yes
+    fig_caption: yes
+---
+
+### Introduction
+
+```{r load_lib, message=FALSE, warning=FALSE}
+suppressPackageStartupMessages(library(qPLEXanalyzer))
+suppressPackageStartupMessages(library(sva))
+suppressPackageStartupMessages(library(pander))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(gplots))
+suppressPackageStartupMessages(library(RColorBrewer))
+suppressPackageStartupMessages(library(DT))
+
+log2_plus_one_tnas <- function(x){
+  
+  return(log2(x + 1))
+}
+
+# get summary
+get_no_pep_and_proteins_identified <- function( intensities_data, run='run' ){
+  
+  int_tab <- Biobase::fData(intensities_data)
+  no_of_pep <- nrow(int_tab)
+  no_of_uniq_prot <- length(unique(int_tab$Accessions))
+  higest_peptides <- as.data.frame(table(int_tab$Accessions) ) %>% 
+    arrange( desc(Freq)) %>% 
+    head(n=1)
+  prote_with_highest_pep <- as.vector(higest_peptides$Var1)
+  number_of_peptides <- higest_peptides$Freq
+  median_peptides <- median(table(int_tab$Accessions) )
+  
+  tab <- data.frame(Run=run, 
+                    Unique_peptides=no_of_pep,
+                    Uniqe_proteins=no_of_uniq_prot,
+                    Median_peptides_per_protein=median_peptides,
+                    Protein_with_highest_peptides=prote_with_highest_pep,
+                    Number_of_peptides=number_of_peptides
+  )
+  return(tab)
+}
+
+hmMissPlot <- function(MSnObj){
+  exprs(MSnObj) %>%
+    as_tibble() %>%
+    mutate(PeptideID = str_c("Pep", row_number())) %>%
+    nest(Data = where(is.numeric)) %>%
+    mutate(Filter = Data) %>%
+    unnest(Filter) %>%
+    mutate(across(where(is.numeric), is.na)) %>%
+    rename_with(.cols = where(is.logical), ~str_c("F", .x)) %>%
+    mutate(MeanInt = map_dbl(Data, rowMeans, na.rm = TRUE)) %>%
+    arrange(across(c(where(is.logical), MeanInt))) %>%
+    select(Data) %>%
+    unnest(Data) %>%
+    rowid_to_column("Ord") %>%
+    pivot_longer(names_to = "Sample", values_to = "Intensity", -Ord) %>%
+    mutate(Intensity=log10(Intensity)) %>%
+    ggplot(aes(x=Sample, y=Ord)) +
+    geom_tile(aes(fill=Intensity)) +
+    scale_fill_continuous(na.value = 'white') +
+    labs(y=NULL, fill="log(Intensity)") +
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          panel.border = element_rect(colour = "black", fill=NA, size=1),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank()) +
+    scale_x_discrete(expand = c(0,0)) +
+    scale_y_discrete(expand = c(0,0))
+}
+```
+
+```{r read_sample_metadata, message=FALSE, warning=FALSE}
+# read sample sheet
+s_sheet <- read.csv( file='../../../data/processed/sample_sheet_v1.0.csv', stringsAsFactors = F) 
+
+datatable(s_sheet)
+
+# read annotation
+anno_tab <- read_tsv(file='../../../data/annotation_human_10_09_2021.txt', col_names = T ) 
+
+# read intensities
+int_tab <- read.csv( file='../../../data/processed/reformatted_peptide_intensities_FP_v1.0.csv', stringsAsFactors = F) %>% 
+  select( -Modifications) %>% 
+  filter(Protein_Groups  == 1 ) %>% 
+  filter(Proteins == 1 ) %>% 
+  select(-Protein_Groups, -Proteins ) %>% 
+  select(Sequence,Accessions, one_of(s_sheet$SampleName))  
+
+MSnset_data1 <- convertToMSnset( ExpObj = int_tab, metadata =s_sheet, Sequences =1, 
+                                 Accessions =2, indExpData = c(3:ncol(int_tab)), 
+                                 rmMissing=FALSE )
+```
+
+
+
+
+### Before filtering: missing values plot
+
+```{r missing_vales_plot, message=FALSE, warning=FALSE}
+hmMissPlot(MSnset_data1)
+```
+
+### Before filtering: Peptide Stats 
+Statistics table consisting of total peptides/proteins in each plex.
+
+```{r pep_stats, message=FALSE, warning=FALSE}
+stats_table <- get_no_pep_and_proteins_identified(intensities_data = MSnset_data1, run = '1' )
+pander(stats_table,style="rmarkdown")
+```
+
+
+
+### After filtering: Missing valies
+
+```{r af_missing_vales_plot, message=FALSE, warning=FALSE}
+MSnset_data1 <- convertToMSnset( ExpObj = int_tab, metadata =s_sheet, Sequences =1, 
+                                 Accessions =2, indExpData = c(3:ncol(int_tab)), 
+                                 rmMissing=TRUE )
+hmMissPlot(MSnset_data1)
+```
+
+### After filtering: Peptide Stats   
+
+Statistics table consisting of total peptides/proteins in each plex.
+
+```{r af_pep_stats, message=FALSE, warning=FALSE}
+stats_table <- get_no_pep_and_proteins_identified(intensities_data = MSnset_data1, run = '1' )
+pander(stats_table,style="rmarkdown")
+```
+
+
+### After filtering: Intensity plots
+
+The plots below shows the peptide intensities before and after normalization. The data is normalized via median scaling. 
+
+```{r af_intensityPlot1, warning=FALSE, message=FALSE, , fig.cap="Density plots of raw intensities for TMT run.", fig.height=4}
+MSnset_data1_norm <- normalizeScaling(MSnset_data1, median)
+p1 <- intensityPlot(MSnset_data1, title = "Before Normalisation", 
+                    trFunc = log2_plus_one_tnas)
+p2 <- intensityPlot(MSnset_data1_norm, title = "Normalisation", 
+                    trFunc = log2_plus_one_tnas)
+grid.arrange(p1, p2, ncol = 2, nrow = 1)
+```
+
+### After filtering:intensity Boxplots
+
+```{r af_intensityBoxplot1, warning=FALSE, message=FALSE, , fig.cap="boxplots of raw intensities for TMT run.", fig.height=4}
+p1 <- intensityBoxplot(MSnset_data1, title = "Before Normalisation")
+p2 <- intensityBoxplot(MSnset_data1_norm, title = "After Normalisation")
+grid.arrange(p1, p2, ncol = 2, nrow = 1)
+```
+
+
+
+### After filtering:Relative log intensity plot
+
+```{r af_rliPlot1, warning=FALSE, message=FALSE, , fig.cap="Relative intensity plots of raw intensities for TMT run.", fig.height=4}
+p1 <- rliPlot(MSnset_data1, title = "Before Normalisation")
+p2 <- rliPlot(MSnset_data1_norm, title = "After Normalisation")
+grid.arrange(p1, p2, ncol = 2, nrow = 1)
+
+```
+
+
+
+### Protein level Summarisation
+
+
+```{r intensity_plots, warning=FALSE, message=FALSE, , fig.cap="Density plots of normalized intensities for TMT run.", fig.height=4}
+MSnset_data1_Pnorm <- summarizeIntensities(MSnset_data1_norm, sum, anno_tab)
+intensityPlot(MSnset_data1_Pnorm)
+
+prot_norm_int <- MSnset_data1_Pnorm %>% 
+  exprs() %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var="Accessions")
+
+prot_norm_int <- anno_tab %>% 
+  select(Accessions,GeneSymbol) %>% 
+  inner_join(.,prot_norm_int, by="Accessions") %>% 
+  select(-Accessions) %>% 
+  filter( !duplicated(GeneSymbol))
+```
+
+
+### PCA
+
+```{r batchcorr2, warning=FALSE, message=FALSE, , fig.cap="PCA plots after  normalisation and summarisation", fig.height=12, fig.width=12, fig.asp=0.7}
+comb_batch <- MSnset_data1_Pnorm
+p1 <- pcaPlot(comb_batch, labelColumn="SampleName", pointsize=3, x.nudge=3,transform=TRUE,labelsize=3)
+p1
+p2 <- pcaPlot(comb_batch, labelColumn="date", pointsize=3, x.nudge=3,transform=TRUE,labelsize=3)
+p2
+```
+
+### Sample correlation plot
+
+The plot below shows the correlation between samples based on normalized protein intensities. 
+
+```{r cor_plot_bn, warning=FALSE, message=FALSE, , fig.cap="Correlation plots for samples based on normalized protein intensities.", fig.height=8, fig.width=8}
+corrPlot(comb_batch,addValues=FALSE)
+```
+
+### Hierarchical clustering analysis
+
+The plot below shows hierarchical clustering plots for all samples using eucledian distance and complete linkage methods.
+
+```{r hclust, warning=FALSE, message=FALSE, , fig.cap="Clusering plot of normalized protein intensities for TMT run.", fig.height=8, fig.width=8, fig.asp=0.5}
+hierarchicalPlot(comb_batch)
+```
+
+
+
+### Heatmap most variable proteins
+
+The heatmap below represents the top 10% most variable proteins across all samples. Protein values in each group are the median intensity across the replicates in each group.
+
+```{r heatmap, warning=FALSE, message=FALSE, , fig.cap="Heatmap of most variable (top 10%) proteins intensities.", fig.height=5}
+cols=brewer.pal(9,"OrRd")
+MSnSet_hm <- comb_batch
+exprs(MSnSet_hm) <- log2(exprs(MSnSet_hm))
+mat_var <- apply(exprs(MSnSet_hm),1,var)
+tokeep <- which(mat_var > quantile(mat_var,.9, na.rm=T))
+MSnSet_hm <- MSnSet_hm[tokeep,]
+mat <- exprs(MSnSet_hm)
+
+heatmap.2(mat,trace="none",Colv=FALSE, dendrogram="row",density.info="none",col=cols,margins=c(10,10),cexCol=0.9,labRow=" " ,scale = 'row')
+```
+
+### Differential Expression
+
+A **limma** based statistical analysis is carried out to find differentially-expressed proteins. 
+
+The plot below shows the differentially expressed protein (in color).
+
+```{r diffexp1, warning=FALSE, message=FALSE, , fig.height=4, results='asis'}
+contrasts <- c(
+  compound_het_vs_WT = "compound_het - WT",
+  Homo_knock_in_vs_WT = "Homo_knock_in - WT",
+  Knockout_vs_WT = "Knockout - WT",
+  Knockout_vs_Homo_knock_in = "Knockout - Homo_knock_in",
+  Knockout_vs_compound_het = "Knockout - compound_het",
+  compound_het_vs_Homo_knock_in = "compound_het - Homo_knock_in"
+
+)
+
+pData(comb_batch)$Run <- as.factor(pData(comb_batch)$Run)
+
+exprs(comb_batch) <- log2(exprs(comb_batch) + 1)
+diffstats <- computeDiffStats(comb_batch, contrasts=contrasts, batchEffect = c("SampleGroup", 'date'), transform=FALSE)
+diffexp <- list()
+for (i in 1:length(contrasts)){
+  diffexp[[i]] <- getContrastResults(diffstats=diffstats, contrast=contrasts[i], writeFile= FALSE)
+}
+
+for (i in 1:length(contrasts)){
+  toplot <- diffexp[[i]]$Accessions[diffexp[[i]]$adj.P.Val < 0.05]
+  
+  if(length(toplot) > 10){
+    toplot <- toplot[1:10]
+  }
+  
+  print(maVolPlot(diffstats, contrast = contrasts[i], plotType="MA", title= contrasts[i], selectedGenes =
+                    toplot, fdrCutOff=0.01))
+}
+```
+
+
+Volcano plot below plots significance versus fold-change on the y and x axes, respectively. The points marked in red are significant.
+
+```{r volcano_plots, warning=FALSE, message=FALSE, , fig.height=4}
+for (i in 1:length(contrasts))
+{
+  toplot <- diffexp[[i]]$Accessions[diffexp[[i]]$adj.P.Val < 0.05]
+  
+  if(length(toplot) > 10){
+    toplot <- toplot[1:10]
+  }
+  
+  print(maVolPlot(diffstats, contrast = contrasts[i], plotType="Volcano", title= contrasts[i], selectedGenes =toplot, fdrCutOff=0.01))
+}
+```
+
+## Differential Results 
+
+The table below shows differential analysis results.
+
+
+
+
+Final statistics table consisting of total peptides/proteins and deferentially expressed proteins in each contrast (adj.P.Val < 0.05).
+
+
+```{r table, warning=FALSE, message=FALSE}
+stats_table <- matrix(0,1,length(contrasts)+1)
+colnames(stats_table) <- c("Proteins",contrasts)
+stats_table[,1] <- nrow(exprs(comb_batch))
+j=2
+for (i in 1:length(contrasts))
+{
+  stats_table[,j] <- length(which(diffexp[[i]]$adj.P.Val < 0.05))
+  j=j+1
+}
+pander(stats_table,style="rmarkdown")
+```
+
+```{r message=FALSE, warning=FALSE}
+# write output files
+cont_names <- names(contrasts)
+out_path <- '../../../data/processed/output/FP_batch_effect_removed'
+
+if(!dir.exists(out_path)){
+  dir.create(out_path, recursive = T)
+}
+for( x in 1:length(cont_names) ){
+  each_cont <- cont_names[x]
+  de_tab <- diffexp[[x]]
+  out_file <- paste(each_cont, 'v1.0.csv', sep='_')
+  out_file_p <- paste( out_path, out_file, sep='/')
+  write_csv(x=de_tab, file = out_file_p)
+  
+  hist(de_tab$P.Value, main=each_cont, xlab='p-values')
+}
+
+```
+Software version.
+
+```{r software_version, warning=FALSE, message=FALSE}
+packageVersion("qPLEXanalyzer")
+```
